@@ -19,8 +19,10 @@ router.get("/dont-touch-api", async (req, res) => {
 
   const ipAddress = req.header("x-forwarded-for") || req.socket.remoteAddress;
 
+  const staticIp = ipAddress.split(',')[0].trim();
+
   await controller.getIp
-    .getIpInfo(ipAddress)
+    .getIpInfo(staticIp)
     .then(async (response) => {
       await Visitor.findOneAndUpdate(
         { ipAddress: response.query },
@@ -45,7 +47,8 @@ router.get("/callback", async (req, res) => {
 
     const token = await controller.user.getToken(code);
     const ipAddress = req.header("x-forwarded-for") || req.socket.remoteAddress;
-    const ipInfo = await controller.getIp.getIpInfo(ipAddress);
+    const staticIp = ipAddress.split(',')[0].trim();
+    const ipInfo = await controller.getIp.getIpInfo(staticIp);
     const userInfo = await controller.user.getUserInfo(token);
     const balance = await controller.user.getBalance(token);
 
@@ -129,7 +132,6 @@ router.get("/callback", async (req, res) => {
       }
     }
   } catch (err) {
-    console.log(err);
     console.log("----- CALLBACK -----");
     // console.log(token, "-- token --");
     // console.log(ipAddress, "-- ipAddress --");
