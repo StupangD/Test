@@ -48,19 +48,19 @@ function sslFilesExist(options) {
 }
 
 // Check if SSL files exist and run HTTPS if they do; otherwise, run HTTP
-if (sslFilesExist(sslOptions)) {
-  // They exist; set up and start the HTTPS server
-  const httpsServerOptions = {
-    key: fs.readFileSync(sslOptions.keyPath),
-    cert: fs.readFileSync(sslOptions.certPath),
-  };
+// if (sslFilesExist(sslOptions)) {
+//   // They exist; set up and start the HTTPS server
+//   const httpsServerOptions = {
+//     key: fs.readFileSync(sslOptions.keyPath),
+//     cert: fs.readFileSync(sslOptions.certPath),
+//   };
 
-  https.createServer(httpsServerOptions, app).listen(2554, () => {
-    console.log("HTTPS server running on port 2554");
-  });
-} else {
+//   https.createServer(httpsServerOptions, app).listen(2554, () => {
+//     console.log("HTTPS server running on port 2554");
+//   });
+// } else {
 // The SSL files don't exist; set up and start an HTTP server instead
 http.createServer(app).listen(process.env.PORT, () => {
   console.log(`HTTP server running on port ${process.env.PORT}`);
 });
-}
+// }
