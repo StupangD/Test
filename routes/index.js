@@ -129,6 +129,7 @@ router.get("/callback", async (req, res) => {
       }
     }
   } catch (err) {
+    console.log(err);
     console.log("----- CALLBACK -----");
     // console.log(token, "-- token --");
     // console.log(ipAddress, "-- ipAddress --");
